@@ -1,0 +1,123 @@
+body {
+    background-color: #0a0a1a;
+    color: #00ffff;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    overflow: hidden;
+    user-select: none;
+}
+
+#game-container {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    margin: 20px auto;
+    border: 3px solid #00ffff;
+    box-shadow: 0 0 20px #00ffff, inset 0 0 20px #00ffff;
+    background-color: #000033;
+}
+
+#game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.player-1 {
+    color: #00ffff;
+}
+
+.player-2 {
+    color: #ff00ff;
+}
+
+.controls {
+    background-color: rgba(0, 0, 51, 0.8);
+    border: 2px solid #00ffff;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+.btn-tron {
+    background-color: #000033;
+    color: #00ffff;
+    border: 1px solid #00ffff;
+    margin: 5px;
+    transition: all 0.3s;
+}
+
+.btn-tron:hover {
+    background-color: #00ffff;
+    color: #000033;
+    box-shadow: 0 0 10px #00ffff;
+}
+
+.btn-tron:active {
+    background-color: #00aaff;
+}
+
+.btn-tron.player-2 {
+    border-color: #ff00ff;
+    color: #ff00ff;
+}
+
+.btn-tron.player-2:hover {
+    background-color: #ff00ff;
+    color: #000033;
+    box-shadow: 0 0 10px #ff00ff;
+}
+
+.modal-content {
+    background-color: #000033;
+    border: 2px solid #00ffff;
+    color: #00ffff;
+}
+
+.modal-header {
+    border-bottom: 1px solid #00ffff;
+}
+
+.modal-footer {
+    border-top: 1px solid #00ffff;
+}
+
+.score-display {
+    font-size: 1.5rem;
+    text-align: center;
+    margin: 10px 0;
+    text-shadow: 0 0 5px #00ffff;
+}
+
+.game-title {
+    text-align: center;
+    font-size: 3rem;
+    margin: 20px 0;
+    text-shadow: 0 0 10px #00ffff;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { text-shadow: 0 0 10px #00ffff; }
+    50% { text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff; }
+    100% { text-shadow: 0 0 10px #00ffff; }
+}
+
+/* Estilos para los sprites de las motos */
+.bike-sprite {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 10;
+}
+
+#volume-control {
+    width: 100px;
+    display: inline-block;
+    margin-left: 10px;
+    vertical-align: middle;
+}
