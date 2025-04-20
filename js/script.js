@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gameRunning = false;
         cancelAnimationFrame(animationId);
         
-        // Determinar ganador
+        // Mostrar ganador
         let winner;
         if (!player1.alive && !player2.alive) {
             winner = 'Empate!';
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         updateScoreDisplay();
         
-        // Mostrar modal de fin de juego
+        // Mostrar modal al final del juego
         document.getElementById('gameOverBody').textContent = winner;
         gameOverModal.show();
     }
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (!gameRunning) return;
         
-        // Prevenir comportamiento por defecto para teclas de juego
+        // Prevenir los comportamiento por defecto para teclas de juego
         const gameKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         if (gameKeys.includes(e.key)) {
             e.preventDefault();
