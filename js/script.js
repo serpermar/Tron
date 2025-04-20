@@ -8,25 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const gameModeSelect = document.getElementById('game-mode');
     const scoreDisplay = document.querySelector('.score-display');
     const gameOverModal = new bootstrap.Modal(document.getElementById('gameOverModal'));
-    const bike1Sprite = document.getElementById('bike1-sprite');
-    const bike2Sprite = document.getElementById('bike2-sprite');
-    const volumeControl = document.getElementById('volume-control');
-    
-    // Elementos de audio
-    const engineSound = document.getElementById('engine-sound');
-    const crashSound = document.getElementById('crash-sound');
-    const startSound = document.getElementById('start-sound');
-    const trailSound = document.getElementById('trail-sound');
-    
-    // Sprites para las motos (usando emojis como alternativa si no se cargan imágenes)
-    const bikeSprites = {
-        player1: '🏍️', // Puedes reemplazar con URL de imagen
-        player2: '🏍️'  // Puedes reemplazar con URL de imagen
-    };
-    
-    // Configurar sprites iniciales
-    bike1Sprite.style.backgroundImage = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="20" y="40" width="60" height="20" fill="cyan"/><rect x="30" y="30" width="10" height="40" fill="cyan"/><rect x="60" y="30" width="10" height="40" fill="cyan"/></svg>')`;
-    bike2Sprite.style.backgroundImage = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="30" fill="magenta"/><rect x="20" y="45" width="60" height="10" fill="magenta"/></svg>')`;
     
     // Ajustar tamaño del canvas al contenedor
     function resizeCanvas() {
@@ -42,16 +23,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let animationId;
     let scores = { player1: 0, player2: 0 };
     let gameMode = 'single';
-    let lastTrailSoundTime = 0;
-    
-    // Control de volumen
-    volumeControl.addEventListener('input', function() {
-        const volume = parseFloat(this.value);
-        engineSound.volume = volume;
-        crashSound.volume = volume;
-        startSound.volume = volume;
-        trailSound.volume = volume * 0.5;
-    });
     
     // Clase para las motos
     class Bike {
@@ -59,8 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
             this.x = x;
             this.y = y;
             this.color = color;
-            this.width = 24;
-            this.height = 24;
+            this.width = 8;
+            this.height = 8;
             this.speed = 3;
             this.direction = { x: 0, y: 0 };
             this.trail = [];
@@ -68,7 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.controls = controls;
             this.isAI = isAI;
             this.alive = true;
-            this.rotation = 0;
         }
         
         update(opponentTrail) {
@@ -83,12 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.x += this.direction.x * this.speed;
             this.y += this.direction.y * this.speed;
             
-            // Actualizar rotación según la dirección
-            if (this.direction.x === 1) this.rotation = 0; // Derecha
-            if (this.direction.x === -1) this.rotation = 180; // Izquierda
-            if (this.direction.y === 1) this.rotation = 90; // Abajo
-            if (this.direction.y === -1) this.rotation = 270; // Arriba
-            
             // Mantener dentro de los límites
             if (this.x < 0) this.x = 0;
             if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
@@ -96,19 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.y > canvas.height - this.height) this.y = canvas.height - this.height;
             
             // Añadir posición actual al rastro
-            this.trail.push({ 
-                x: this.x, 
-                y: this.y,
-                rotation: this.rotation
-            });
-            
-            // Sonido del rastro (limitado para no saturar)
-            const now = Date.now();
-            if (now - lastTrailSoundTime > 100) {
-                trailSound.currentTime = 0;
-                trailSound.play().catch(e => console.log("Error de audio:", e));
-                lastTrailSoundTime = now;
-            }
+            this.trail.push({ x: this.x, y: this.y });
             
             // Limitar longitud del rastro
             if (this.trail.length > this.maxTrailLength) {
@@ -120,48 +72,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         AIMovement(opponentTrail) {
-            // IA mejorada que evita colisiones y bordes
-            const margin = 70;
-            const changeDirectionChance = 0.03;
-            const lookAhead = 50;
+            // Simple IA que intenta evitar colisiones y mantenerse alejada de los bordes
+            const margin = 50;
+            const changeDirectionChance = 0.02;
             
             // Cambiar dirección aleatoriamente a veces
             if (Math.random() < changeDirectionChance) {
-                this.randomDirectionChange();
-            }
-            
-            // Detectar peligro adelante
-            const futureX = this.x + this.direction.x * lookAhead;
-            const futureY = this.y + this.direction.y * lookAhead;
-            
-            // Verificar colisión futura con bordes
-            if (futureX < margin || futureX > canvas.width - margin || 
-                futureY < margin || futureY > canvas.height - margin) {
-                this.randomDirectionChange();
-            }
-            
-            // Verificar colisión futura con rastros
-            for (let i = 0; i < opponentTrail.length - 10; i += 5) {
-                const point = opponentTrail[i];
-                const dist = Math.sqrt(Math.pow(futureX - point.x, 2) + Math.pow(futureY - point.y, 2));
-                if (dist < 30) {
-                    this.randomDirectionChange();
-                    break;
-                }
-            }
-        }
-        
-        randomDirectionChange() {
-            const directions = [
-                { x: 1, y: 0 }, { x: -1, y: 0 },
-                { x: 0, y: 1 }, { x: 0, y: -1 }
-            ].filter(dir => 
-                !(dir.x === -this.direction.x && dir.y === -this.direction.y) // Evitar reversa inmediata
-            );
-            
-            if (directions.length > 0) {
+                const directions = [
+                    { x: 1, y: 0 }, { x: -1, y: 0 },
+                    { x: 0, y: 1 }, { x: 0, y: -1 }
+                ];
                 const newDir = directions[Math.floor(Math.random() * directions.length)];
                 this.direction = newDir;
+            }
+            
+            // Evitar bordes
+            if (this.x < margin && this.direction.x < 0) {
+                this.direction = { x: 0, y: Math.random() < 0.5 ? 1 : -1 };
+            }
+            if (this.x > canvas.width - margin && this.direction.x > 0) {
+                this.direction = { x: 0, y: Math.random() < 0.5 ? 1 : -1 };
+            }
+            if (this.y < margin && this.direction.y < 0) {
+                this.direction = { x: Math.random() < 0.5 ? 1 : -1, y: 0 };
+            }
+            if (this.y > canvas.height - margin && this.direction.y > 0) {
+                this.direction = { x: Math.random() < 0.5 ? 1 : -1, y: 0 };
             }
         }
         
@@ -169,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Verificar colisión con los bordes
             if (this.x <= 0 || this.x >= canvas.width - this.width || 
                 this.y <= 0 || this.y >= canvas.height - this.height) {
-                this.crash();
+                this.alive = false;
                 return;
             }
             
@@ -177,42 +113,37 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let i = 0; i < this.trail.length - 10; i++) {
                 const point = this.trail[i];
                 if (this.checkPointCollision(point)) {
-                    this.crash();
+                    this.alive = false;
                     return;
                 }
             }
             
             // Verificar colisión con el rastro del oponente
-            for (let i = 0; i < opponentTrail.length; i++) {
-                const point = opponentTrail[i];
+            for (const point of opponentTrail) {
                 if (this.checkPointCollision(point)) {
-                    this.crash();
+                    this.alive = false;
                     return;
                 }
             }
         }
         
         checkPointCollision(point) {
-            return this.x < point.x + 4 && 
-                   this.x + this.width > point.x - 4 && 
-                   this.y < point.y + 4 && 
-                   this.y + this.height > point.y - 4;
-        }
-        
-        crash() {
-            this.alive = false;
-            crashSound.currentTime = 0;
-            crashSound.play().catch(e => console.log("Error de audio:", e));
+            return this.x < point.x + 2 && 
+                   this.x + this.width > point.x - 2 && 
+                   this.y < point.y + 2 && 
+                   this.y + this.height > point.y - 2;
         }
         
         draw() {
             if (!this.alive) return;
             
+            // Dibujar moto
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            
             // Dibujar rastro
             ctx.strokeStyle = this.color;
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             
             if (this.trail.length > 1) {
@@ -224,17 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             ctx.stroke();
-            
-            // Dibujar moto (ahora se hace con el sprite HTML)
-            this.updateSpritePosition();
-        }
-        
-        updateSpritePosition() {
-            const sprite = this === player1 ? bike1Sprite : bike2Sprite;
-            sprite.style.left = `${this.x}px`;
-            sprite.style.top = `${this.y}px`;
-            sprite.style.transform = `rotate(${this.rotation}deg)`;
-            sprite.style.opacity = this.alive ? '1' : '0.5';
         }
         
         handleKeyDown(key) {
@@ -274,23 +194,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Dar direcciones iniciales opuestas
         player1.direction = { x: 1, y: 0 };
         player2.direction = { x: -1, y: 0 };
-        
-        // Actualizar sprites iniciales
-        player1.updateSpritePosition();
-        player2.updateSpritePosition();
     }
     
     // Inicializar juego
     function initGame() {
         gameRunning = false;
-        engineSound.pause();
         scores = { player1: 0, player2: 0 };
         updateScoreDisplay();
         createBikes();
-        
-        // Limpiar canvas
-        ctx.fillStyle = '#000033';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     
     // Actualizar marcador
@@ -303,12 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function gameLoop() {
         if (!gameRunning) return;
         
-        // Limpiar canvas con efecto de desvanecimiento
-        ctx.fillStyle = 'rgba(0, 0, 51, 0.1)';
+        // Limpiar canvas
+        ctx.fillStyle = 'rgba(0, 0, 51, 0.2)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Dibujar rejilla de fondo
-        drawGrid();
         
         // Actualizar y dibujar motos
         player1.update(player2.trail);
@@ -325,32 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
         animationId = requestAnimationFrame(gameLoop);
     }
     
-    // Dibujar rejilla de fondo estilo Tron
-    function drawGrid() {
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-        
-        // Líneas verticales
-        for (let x = 0; x < canvas.width; x += 40) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, canvas.height);
-            ctx.stroke();
-        }
-        
-        // Líneas horizontales
-        for (let y = 0; y < canvas.height; y += 40) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(canvas.width, y);
-            ctx.stroke();
-        }
-    }
-    
     // Finalizar juego
     function endGame() {
         gameRunning = false;
-        engineSound.pause();
         cancelAnimationFrame(animationId);
         
         // Determinar ganador
@@ -377,15 +262,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!gameRunning) {
             gameRunning = true;
             createBikes();
-            startSound.currentTime = 0;
-            startSound.play().catch(e => console.log("Error de audio:", e));
-            engineSound.currentTime = 0;
-            engineSound.play().catch(e => console.log("Error de audio:", e));
             gameLoop();
             startBtn.textContent = 'Pausa';
         } else {
             gameRunning = false;
-            engineSound.pause();
             cancelAnimationFrame(animationId);
             startBtn.textContent = 'Continuar';
         }
@@ -393,10 +273,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     resetBtn.addEventListener('click', function() {
         gameRunning = false;
-        engineSound.pause();
         cancelAnimationFrame(animationId);
         initGame();
         startBtn.textContent = 'Iniciar Juego';
+        
+        // Limpiar canvas
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     });
     
     gameModeSelect.addEventListener('change', function() {

@@ -1,8 +1,7 @@
 body {
     background-color: #0a0a1a;
     color: #00ffff;
-    text-align: center;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Courier New', monospace;
     overflow: hidden;
     user-select: none;
 }
@@ -105,19 +104,9 @@ body {
     100% { text-shadow: 0 0 10px #00ffff; }
 }
 
-/* Estilos para los sprites de las motos */
-.bike-sprite {
+.trail {
     position: absolute;
-    width: 24px;
-    height: 24px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    z-index: 10;
-}
-
-#volume-control {
-    width: 100px;
-    display: inline-block;
-    margin-left: 10px;
-    vertical-align: middle;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
 }
