@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Elementos de audio
+    const backgroundMusic = document.getElementById('background-music');
+    const gameStartSound = document.getElementById('game-start-sound');
+    const crashSound = document.getElementById('crash-sound');
+    const musicBtn = document.getElementById('music-btn');
+    
     // Configuración del juego
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
@@ -8,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const gameModeSelect = document.getElementById('game-mode');
     const scoreDisplay = document.querySelector('.score-display');
     const gameOverModal = new bootstrap.Modal(document.getElementById('gameOverModal'));
+    const loadingScreen = document.getElementById('loading-screen');
     
     // Ajustar tamaño del canvas al contenedor
     function resizeCanvas() {
@@ -23,6 +30,53 @@ document.addEventListener('DOMContentLoaded', function() {
     let animationId;
     let scores = { player1: 0, player2: 0 };
     let gameMode = 'single';
+    let musicPlaying = false;
+    
+    // Cargar recursos
+    function loadResources() {
+        // Simular carga de recursos
+        setTimeout(function() {
+            loadingScreen.style.display = 'none';
+            
+            // Intentar reproducir música (requiere interacción del usuario)
+            document.body.addEventListener('click', function initAudio() {
+                if (!musicPlaying) {
+                    backgroundMusic.volume = 0.3;
+                    gameStartSound.volume = 0.5;
+                    crashSound.volume = 0.7;
+                    
+                    backgroundMusic.play().then(() => {
+                        backgroundMusic.pause();
+                        musicPlaying = true;
+                        updateMusicButton();
+                    }).catch(e => {
+                        console.log("Autoplay no permitido:", e);
+                    });
+                }
+                
+                // Eliminar el event listener después del primer click
+                document.body.removeEventListener('click', initAudio);
+            }, { once: true });
+        }, 2000); // Simular 2 segundos de carga
+    }
+    
+    // Control de música
+    function toggleMusic() {
+        if (musicPlaying) {
+            backgroundMusic.pause();
+            musicPlaying = false;
+        } else {
+            backgroundMusic.play().catch(e => console.log("Error al reproducir:", e));
+            musicPlaying = true;
+        }
+        updateMusicButton();
+    }
+    
+    function updateMusicButton() {
+        musicBtn.innerHTML = musicPlaying ? '♫' : '🔇';
+    }
+    
+    musicBtn.addEventListener('click', toggleMusic);
     
     // Clase para las motos
     class Bike {
@@ -106,6 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.x <= 0 || this.x >= canvas.width - this.width || 
                 this.y <= 0 || this.y >= canvas.height - this.height) {
                 this.alive = false;
+                crashSound.play();
                 return;
             }
             
@@ -114,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const point = this.trail[i];
                 if (this.checkPointCollision(point)) {
                     this.alive = false;
+                    crashSound.play();
                     return;
                 }
             }
@@ -122,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
             for (const point of opponentTrail) {
                 if (this.checkPointCollision(point)) {
                     this.alive = false;
+                    crashSound.play();
                     return;
                 }
             }
@@ -238,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gameRunning = false;
         cancelAnimationFrame(animationId);
         
-        // Mostrar ganador
+        // Determinar ganador
         let winner;
         if (!player1.alive && !player2.alive) {
             winner = 'Empate!';
@@ -252,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         updateScoreDisplay();
         
-        // Mostrar modal al final del juego
+        // Mostrar modal de fin de juego
         document.getElementById('gameOverBody').textContent = winner;
         gameOverModal.show();
     }
@@ -264,10 +321,18 @@ document.addEventListener('DOMContentLoaded', function() {
             createBikes();
             gameLoop();
             startBtn.textContent = 'Pausa';
+            gameStartSound.currentTime = 0;
+            gameStartSound.play();
+            
+            // Reproducir música si está pausada
+            if (musicPlaying && backgroundMusic.paused) {
+                backgroundMusic.play();
+            }
         } else {
             gameRunning = false;
             cancelAnimationFrame(animationId);
             startBtn.textContent = 'Continuar';
+            backgroundMusic.pause();
         }
     });
     
@@ -290,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(e) {
         if (!gameRunning) return;
         
-        // Prevenir los comportamiento por defecto para teclas de juego
+        // Prevenir comportamiento por defecto para teclas de juego
         const gameKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         if (gameKeys.includes(e.key)) {
             e.preventDefault();
@@ -300,6 +365,6 @@ document.addEventListener('DOMContentLoaded', function() {
         player2.handleKeyDown(e.key);
     });
     
-    // Inicializar juego al cargar
-    initGame();
+    // Iniciar carga de recursos
+    loadResources();
 });
