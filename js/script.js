@@ -1,11 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Elementos de audio
+    // Elementos
     const backgroundMusic = document.getElementById('background-music');
     const gameStartSound = document.getElementById('game-start-sound');
     const crashSound = document.getElementById('crash-sound');
     const musicBtn = document.getElementById('music-btn');
-    
-    // Configuración del juego
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     const gameContainer = document.getElementById('game-container');
@@ -15,70 +13,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const scoreDisplay = document.querySelector('.score-display');
     const gameOverModal = new bootstrap.Modal(document.getElementById('gameOverModal'));
     const loadingScreen = document.getElementById('loading-screen');
-    
-    // Ajustar tamaño del canvas al contenedor
+
     function resizeCanvas() {
         canvas.width = gameContainer.clientWidth;
         canvas.height = gameContainer.clientHeight;
     }
-    
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    
-    // Variables del juego
+
     let gameRunning = false;
     let animationId;
     let scores = { player1: 0, player2: 0 };
     let gameMode = 'single';
     let musicPlaying = false;
-    
-    // Cargar recursos
-    function loadResources() {
-        // Simular carga de recursos
-        setTimeout(function() {
-            loadingScreen.style.display = 'none';
-            
-            // Intentar reproducir música (requiere interacción del usuario)
-            document.body.addEventListener('click', function initAudio() {
-                if (!musicPlaying) {
-                    backgroundMusic.volume = 0.3;
-                    gameStartSound.volume = 0.5;
-                    crashSound.volume = 0.7;
-                    
-                    backgroundMusic.play().then(() => {
-                        backgroundMusic.pause();
-                        musicPlaying = true;
-                        updateMusicButton();
-                    }).catch(e => {
-                        console.log("Autoplay no permitido:", e);
-                    });
-                }
-                
-                // Eliminar el event listener después del primer click
-                document.body.removeEventListener('click', initAudio);
-            }, { once: true });
-        }, 2000); // Simular 2 segundos de carga
-    }
-    
-    // Control de música
-    function toggleMusic() {
-        if (musicPlaying) {
-            backgroundMusic.pause();
-            musicPlaying = false;
-        } else {
-            backgroundMusic.play().catch(e => console.log("Error al reproducir:", e));
-            musicPlaying = true;
-        }
-        updateMusicButton();
-    }
-    
-    function updateMusicButton() {
-        musicBtn.innerHTML = musicPlaying ? '♫' : '🔇';
-    }
-    
-    musicBtn.addEventListener('click', toggleMusic);
-    
-    // Clase para las motos
+
+    // --- CLASE BIKE ---
     class Bike {
         constructor(x, y, color, controls, isAI = false) {
             this.x = x;
@@ -86,285 +35,192 @@ document.addEventListener('DOMContentLoaded', function() {
             this.color = color;
             this.width = 8;
             this.height = 8;
-            this.speed = 3;
+            this.speed = 4; // Un poco más rápido para emoción
             this.direction = { x: 0, y: 0 };
             this.trail = [];
-            this.maxTrailLength = 1000;
             this.controls = controls;
             this.isAI = isAI;
             this.alive = true;
         }
-        
+
         update(opponentTrail) {
             if (!this.alive) return;
-            
-            // Movimiento de la IA (solo en modo single player)
+
             if (this.isAI && gameMode === 'single') {
-                this.AIMovement(opponentTrail);
+                this.smartAIMovement(opponentTrail);
             }
-            
-            // Actualizar posición
+
             this.x += this.direction.x * this.speed;
             this.y += this.direction.y * this.speed;
-            
-            // Mantener dentro de los límites
-            if (this.x < 0) this.x = 0;
-            if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
-            if (this.y < 0) this.y = 0;
-            if (this.y > canvas.height - this.height) this.y = canvas.height - this.height;
-            
-            // Añadir posición actual al rastro
+
             this.trail.push({ x: this.x, y: this.y });
-            
-            // Limitar longitud del rastro
-            if (this.trail.length > this.maxTrailLength) {
-                this.trail.shift();
-            }
-            
-            // Detectar colisiones
             this.checkCollisions(opponentTrail);
         }
-        
-        AIMovement(opponentTrail) {
-            // Simple IA que intenta evitar colisiones y mantenerse alejada de los bordes
-            const margin = 50;
-            const changeDirectionChance = 0.02;
-            
-            // Cambiar dirección aleatoriamente a veces
-            if (Math.random() < changeDirectionChance) {
-                const directions = [
-                    { x: 1, y: 0 }, { x: -1, y: 0 },
-                    { x: 0, y: 1 }, { x: 0, y: -1 }
+
+        // IA Mejorada: Detecta muros y rastros
+        smartAIMovement(opponentTrail) {
+            const lookAhead = 20; 
+            let nextX = this.x + this.direction.x * lookAhead;
+            let nextY = this.y + this.direction.y * lookAhead;
+
+            // ¿Voy a chocar?
+            const willHitWall = nextX <= 0 || nextX >= canvas.width || nextY <= 0 || nextY >= canvas.height;
+            const willHitSelf = this.trail.some(p => this.checkPointCollision(p, nextX, nextY));
+            const willHitOpponent = opponentTrail.some(p => this.checkPointCollision(p, nextX, nextY));
+
+            if (willHitWall || willHitSelf || willHitOpponent || Math.random() < 0.01) {
+                const choices = [
+                    {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0}
                 ];
-                const newDir = directions[Math.floor(Math.random() * directions.length)];
-                this.direction = newDir;
-            }
-            
-            // Evitar bordes
-            if (this.x < margin && this.direction.x < 0) {
-                this.direction = { x: 0, y: Math.random() < 0.5 ? 1 : -1 };
-            }
-            if (this.x > canvas.width - margin && this.direction.x > 0) {
-                this.direction = { x: 0, y: Math.random() < 0.5 ? 1 : -1 };
-            }
-            if (this.y < margin && this.direction.y < 0) {
-                this.direction = { x: Math.random() < 0.5 ? 1 : -1, y: 0 };
-            }
-            if (this.y > canvas.height - margin && this.direction.y > 0) {
-                this.direction = { x: Math.random() < 0.5 ? 1 : -1, y: 0 };
+                // Filtrar para no ir hacia atrás y no chocar inmediatamente
+                const validChoices = choices.filter(dir => {
+                    if (dir.x === -this.direction.x && dir.y === -this.direction.y) return false;
+                    let testX = this.x + dir.x * lookAhead;
+                    let testY = this.y + dir.y * lookAhead;
+                    return testX > 0 && testX < canvas.width && testY > 0 && testY < canvas.height;
+                });
+
+                if (validChoices.length > 0) {
+                    this.direction = validChoices[Math.floor(Math.random() * validChoices.length)];
+                }
             }
         }
-        
+
         checkCollisions(opponentTrail) {
-            // Verificar colisión con los bordes
+            // Bordes
             if (this.x <= 0 || this.x >= canvas.width - this.width || 
                 this.y <= 0 || this.y >= canvas.height - this.height) {
-                this.alive = false;
-                crashSound.play();
-                return;
+                this.die();
             }
-            
-            // Verificar colisión con propio rastro (excepto los últimos segmentos)
-            for (let i = 0; i < this.trail.length - 10; i++) {
-                const point = this.trail[i];
-                if (this.checkPointCollision(point)) {
-                    this.alive = false;
-                    crashSound.play();
-                    return;
-                }
+            // Propio rastro
+            for (let i = 0; i < this.trail.length - 15; i++) {
+                if (this.checkPointCollision(this.trail[i], this.x, this.y)) this.die();
             }
-            
-            // Verificar colisión con el rastro del oponente
+            // Rastro oponente
             for (const point of opponentTrail) {
-                if (this.checkPointCollision(point)) {
-                    this.alive = false;
-                    crashSound.play();
-                    return;
-                }
+                if (this.checkPointCollision(point, this.x, this.y)) this.die();
             }
         }
-        
-        checkPointCollision(point) {
-            return this.x < point.x + 2 && 
-                   this.x + this.width > point.x - 2 && 
-                   this.y < point.y + 2 && 
-                   this.y + this.height > point.y - 2;
+
+        checkPointCollision(point, targetX, targetY) {
+            const margin = 5;
+            return targetX < point.x + margin && targetX + this.width > point.x - margin &&
+                   targetY < point.y + margin && targetY + this.height > point.y - margin;
         }
-        
+
+        die() {
+            this.alive = false;
+            if(crashSound) crashSound.play();
+        }
+
         draw() {
-            if (!this.alive) return;
-            
-            // Dibujar moto
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x, this.y, this.width, this.height);
             
-            // Dibujar rastro
             ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            
-            if (this.trail.length > 1) {
-                ctx.moveTo(this.trail[0].x + this.width/2, this.trail[0].y + this.height/2);
-                
-                for (let i = 1; i < this.trail.length; i++) {
-                    ctx.lineTo(this.trail[i].x + this.width/2, this.trail[i].y + this.height/2);
-                }
+            if (this.trail.length > 0) {
+                ctx.moveTo(this.trail[0].x + 4, this.trail[0].y + 4);
+                this.trail.forEach(p => ctx.lineTo(p.x + 4, p.y + 4));
             }
-            
             ctx.stroke();
         }
-        
+
         handleKeyDown(key) {
             if (!this.alive) return;
-            
-            if (key === this.controls.up && this.direction.y !== 1) {
-                this.direction = { x: 0, y: -1 };
-            } else if (key === this.controls.down && this.direction.y !== -1) {
-                this.direction = { x: 0, y: 1 };
-            } else if (key === this.controls.left && this.direction.x !== 1) {
-                this.direction = { x: -1, y: 0 };
-            } else if (key === this.controls.right && this.direction.x !== -1) {
-                this.direction = { x: 1, y: 0 };
-            }
+            const k = key.toLowerCase();
+            if (k === this.controls.up && this.direction.y !== 1) this.direction = { x: 0, y: -1 };
+            else if (k === this.controls.down && this.direction.y !== -1) this.direction = { x: 0, y: 1 };
+            else if (k === this.controls.left && this.direction.x !== 1) this.direction = { x: -1, y: 0 };
+            else if (k === this.controls.right && this.direction.x !== -1) this.direction = { x: 1, y: 0 };
         }
     }
-    
-    // Crear motos
+
     let player1, player2;
-    
+
     function createBikes() {
-        player1 = new Bike(
-            canvas.width * 0.25, 
-            canvas.height * 0.5, 
-            '#00ffff', 
-            { up: 'w', down: 's', left: 'a', right: 'd' }
-        );
-        
-        player2 = new Bike(
-            canvas.width * 0.75, 
-            canvas.height * 0.5, 
-            '#ff00ff', 
-            { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' },
-            gameMode === 'single'
-        );
-        
-        // Dar direcciones iniciales opuestas
+        player1 = new Bike(100, canvas.height/2, '#00ffff', { up: 'w', down: 's', left: 'a', right: 'd' });
+        player2 = new Bike(canvas.width - 100, canvas.height/2, '#ff00ff', 
+                          { up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright' }, 
+                          gameMode === 'single');
         player1.direction = { x: 1, y: 0 };
         player2.direction = { x: -1, y: 0 };
     }
-    
-    // Inicializar juego
-    function initGame() {
-        gameRunning = false;
-        scores = { player1: 0, player2: 0 };
-        updateScoreDisplay();
-        createBikes();
-    }
-    
-    // Actualizar marcador
-    function updateScoreDisplay() {
-        scoreDisplay.querySelector('.player-1').textContent = `Jugador 1: ${scores.player1}`;
-        scoreDisplay.querySelector('.player-2').textContent = `Jugador 2: ${scores.player2}`;
-    }
-    
-    // Bucle del juego
+
     function gameLoop() {
         if (!gameRunning) return;
-        
-        // Limpiar canvas
-        ctx.fillStyle = 'rgba(0, 0, 51, 0.2)';
+        ctx.fillStyle = 'rgba(0, 0, 51, 0.3)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Actualizar y dibujar motos
+
         player1.update(player2.trail);
         player2.update(player1.trail);
         player1.draw();
         player2.draw();
-        
-        // Verificar si el juego ha terminado
+
         if (!player1.alive || !player2.alive) {
             endGame();
             return;
         }
-        
         animationId = requestAnimationFrame(gameLoop);
     }
-    
-    // Finalizar juego
+
     function endGame() {
         gameRunning = false;
         cancelAnimationFrame(animationId);
+        let msg = "";
+        if (!player1.alive && !player2.alive) msg = "¡COLISIÓN SIMULTÁNEA!";
+        else if (!player1.alive) { msg = "JUGADOR 2 GANA"; scores.player2++; }
+        else { msg = "JUGADOR 1 GANA"; scores.player1++; }
         
-        // Determinar ganador
-        let winner;
-        if (!player1.alive && !player2.alive) {
-            winner = 'Empate!';
-        } else if (!player1.alive) {
-            winner = 'Jugador 2 ha ganado!';
-            scores.player2++;
-        } else {
-            winner = 'Jugador 1 ha ganado!';
-            scores.player1++;
-        }
-        
-        updateScoreDisplay();
-        
-        // Mostrar modal de fin de juego
-        document.getElementById('gameOverBody').textContent = winner;
+        document.getElementById('gameOverBody').textContent = msg;
+        scoreDisplay.querySelector('.player-1').textContent = `Jugador 1: ${scores.player1}`;
+        scoreDisplay.querySelector('.player-2').textContent = `Jugador 2: ${scores.player2}`;
+        startBtn.textContent = "Nueva Ronda";
         gameOverModal.show();
     }
-    
-    // Event listeners
-    startBtn.addEventListener('click', function() {
+
+    startBtn.addEventListener('click', () => {
         if (!gameRunning) {
+            if (!player1 || !player1.alive || !player2.alive) createBikes();
             gameRunning = true;
-            createBikes();
+            startBtn.textContent = "Pausar";
+            if(gameStartSound) gameStartSound.play();
             gameLoop();
-            startBtn.textContent = 'Pausa';
-            gameStartSound.currentTime = 0;
-            gameStartSound.play();
-            
-            // Reproducir música si está pausada
-            if (musicPlaying && backgroundMusic.paused) {
-                backgroundMusic.play();
-            }
         } else {
             gameRunning = false;
-            cancelAnimationFrame(animationId);
-            startBtn.textContent = 'Continuar';
-            backgroundMusic.pause();
+            startBtn.textContent = "Continuar";
         }
     });
-    
-    resetBtn.addEventListener('click', function() {
+
+    resetBtn.addEventListener('click', () => {
         gameRunning = false;
         cancelAnimationFrame(animationId);
-        initGame();
-        startBtn.textContent = 'Iniciar Juego';
-        
-        // Limpiar canvas
-        ctx.fillStyle = '#000033';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        scores = {player1: 0, player2: 0};
+        scoreDisplay.querySelector('.player-1').textContent = `Jugador 1: 0`;
+        scoreDisplay.querySelector('.player-2').textContent = `Jugador 2: 0`;
+        createBikes();
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        startBtn.textContent = "Iniciar Juego";
     });
-    
-    gameModeSelect.addEventListener('change', function() {
-        gameMode = this.value;
-        initGame();
+
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key)) e.preventDefault();
+        player1.handleKeyDown(key);
+        player2.handleKeyDown(key);
     });
-    
-    document.addEventListener('keydown', function(e) {
-        if (!gameRunning) return;
-        
-        // Prevenir comportamiento por defecto para teclas de juego
-        const gameKeys = ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-        if (gameKeys.includes(e.key)) {
-            e.preventDefault();
-        }
-        
-        player1.handleKeyDown(e.key);
-        player2.handleKeyDown(e.key);
+
+    // Carga inicial
+    setTimeout(() => { 
+        loadingScreen.style.display = 'none'; 
+        createBikes();
+    }, 1500);
+
+    // Música
+    musicBtn.addEventListener('click', () => {
+        musicPlaying = !musicPlaying;
+        musicPlaying ? backgroundMusic.play() : backgroundMusic.pause();
+        musicBtn.innerHTML = musicPlaying ? '♫' : '🔇';
     });
-    
-    // Iniciar carga de recursos
-    loadResources();
 });
