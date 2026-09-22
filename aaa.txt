@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRON - Grid Battle</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-dark text-white">
+
+    <!-- Pantalla de Carga Inicial -->
+    <div id="loading-screen" class="d-flex flex-column justify-content-center align-items-center">
+        <h1 class="logo-text glitch" data-text="TRON GRID">TRON GRID</h1>
+        <p class="loading-sub">RECONSTRUYENDO EL GRID...</p>
+        <div class="spinner-border text-info mt-3" role="status"></div>
+    </div>
+
+    <!-- Contenedor Principal del Juego -->
+    <div id="game-container" class="container-fluid vh-100 d-flex flex-column justify-content-center align-items-center position-relative p-0">
+        
+        <!-- HUD Superior -->
+        <header class="w-100 d-flex justify-content-between align-items-center px-4 py-2 bg-black bg-opacity-75 border-bottom border-info border-opacity-25">
+            <div class="score-display d-flex gap-4 fw-bold">
+                <span class="player-1 text-info">Jugador 1: 0</span>
+                <span class="player-2 text-danger">Jugador 2: 0</span>
+            </div>
+            <div id="match-info" class="small text-muted font-monospace">MEJOR MARCA: 0</div>
+            <div class="d-flex align-items-center gap-3">
+                <button id="music-btn" class="btn btn-sm btn-outline-info">🔇</button>
+                <button id="settings-btn" class="btn btn-sm btn-outline-secondary">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Área del Canvas (Juego) -->
+        <main class="flex-grow-1 w-100 position-relative d-flex justify-content-center align-items-center overflow-hidden">
+            <canvas id="game-canvas"></canvas>
+
+            <!-- Cuenta atrás -->
+            <div id="countdown" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-black bg-opacity-50" style="display: none !important;">
+                <span id="countdown-text" class="display-1 fw-bold text-info">3</span>
+            </div>
+
+            <!-- Menú de Pausa -->
+            <div id="pause-menu" class="position-absolute top-0 start-0 w-100 h-100 flex-column justify-content-center align-items-center bg-black bg-opacity-75" style="display: none;">
+                <h2 class="text-info mb-4">JUEGO EN PAUSA</h2>
+                <div class="d-flex flex-column gap-3 w-50 max-w-300">
+                    <button id="resume-btn" class="btn btn-tron">Continuar</button>
+                    <button id="pause-restart-btn" class="btn btn-outline-danger">Reiniciar Partida</button>
+                    <button id="pause-controls-btn" class="btn btn-outline-info">Ver Controles</button>
+                    <div id="pause-hint" class="small text-center text-muted mt-2" style="display: none;">
+                        P1: WASD + Shift | P2: Flechas + L
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- HUD Inferior (Energía y Controles de Menú) -->
+        <footer class="w-100 d-flex flex-column gap-2 px-4 py-3 bg-black bg-opacity-75 border-top border-info border-opacity-25">
+            <div class="row w-100 m-0 align-items-center">
+                <div class="col-5">
+                    <div class="small text-info mb-1">ENERGÍA J1</div>
+                    <div class="progress bg-dark border border-info border-opacity-50" style="height: 10px;">
+                        <div id="energy1" class="progress-bar bg-success" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="col-2 text-center">
+                    <button id="start-btn" class="btn btn-tron px-4 py-2 fw-bold">Iniciar Juego</button>
+                    <button id="reset-btn" class="btn btn-outline-danger btn-sm mt-1" style="display:none;">Reiniciar</button>
+                </div>
+                <div class="col-5">
+                    <div class="small text-danger mb-1 text-end">ENERGÍA J2</div>
+                    <div class="progress bg-dark border border-danger border-opacity-50" style="height: 10px;">
+                        <div id="energy2" class="progress-bar bg-danger ms-auto" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selectores de Configuración Rápida -->
+            <div class="d-flex flex-wrap justify-content-center gap-3 mt-2">
+                <select id="game-mode" class="form-select form-select-sm bg-dark text-white border-secondary w-auto">
+                    <option value="single">VS CPU</option>
+                    <option value="multi">2 Jugadores</option>
+                </select>
+                <select id="ai-difficulty" class="form-select form-select-sm bg-dark text-white border-secondary w-auto">
+                    <option value="easy">IA: Fácil</option>
+                    <option value="medium" selected>IA: Media</option>
+                    <option value="hard">IA: Difícil</option>
+                </select>
+                <select id="match-length" class="form-select form-select-sm bg-dark text-white border-secondary w-auto">
+                    <option value="0">Infinito</option>
+                    <option value="3">Primero a 3</option>
+                    <option value="5">Primero a 5</option>
+                </select>
+                <select id="bike-style" class="form-select form-select-sm bg-dark text-white border-secondary w-auto">
+                    <option value="cruiser">Moto: Cruiser</option>
+                    <option value="viper">Moto: Viper</option>
+                    <option value="titan">Moto: Titan</option>
+                </select>
+                <select id="obstacles-toggle" class="form-select form-select-sm bg-dark text-white border-secondary w-auto">
+                    <option value="off">Muros: No</option>
+                    <option value="on">Muros: Sí</option>
+                </select>
+                <select id="game-format" class="form-select form-select-sm bg-dark text-white border-secondary w-auto">
+                    <option value="classic">Modo: Clásico</option>
+                    <option value="race">Modo: Raza (Meta)</option>
+                </select>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modales de Bootstrap -->
+    <div class="modal fade" id="gameOverModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border border-info">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title text-info">FIN DE RONDA</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center fs-4" id="gameOverBody"></div>
+                <div class="modal-footer border-top border-secondary justify-content-center">
+                    <button type="button" id="replay-btn" class="btn btn-outline-info" style="display:none;">🎬 Ver Replay</button>
+                    <button type="button" id="restart-btn" class="btn btn-tron">Siguiente Ronda</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border border-secondary">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title">Ajustes y Volumen</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body d-flex flex-column gap-3">
+                    <div>
+                        <label class="form-label small">Música</label>
+                        <input type="range" id="vol-music" class="form-range" min="0" max="100" value="100">
+                    </div>
+                    <div>
+                        <label class="form-label small">Efectos de Sonido (FX)</label>
+                        <input type="range" id="vol-fx" class="form-range" min="0" max="100" value="100">
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <button type="button" id="volume-reset-btn" class="btn btn-sm btn-outline-secondary">Restablecer</button>
+                        <button type="button" id="records-btn" class="btn btn-sm btn-outline-info">Ver Tabla de Récords</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="recordsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border border-info">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title text-info">Tabla de Récords</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-dark table-striped table-sm text-center">
+                        <thead>
+                            <tr>
+                                <th>Modo</th>
+                                <th>Fac</th>
+                                <th>Med</th>
+                                <th>Dif</th>
+                                <th>Multi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audios -->
+    <audio id="background-music" loop src="https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3"></audio>
+    <audio id="game-start-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <audio id="crash-sound" src="https://assets.mixkit.co/active_storage/sfx/2658/2658-preview.mp3"></audio>
+    <audio id="powerup-sound" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Script Principal -->
+    <script src="js/script.js"></script>
+</body>
+</html>
+
+
+
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000022;
+    font-family: monospace;
+}
+
+#game-container {
+    width: 100vw;
+    height: 100vh;
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: #000033;
+}
+
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000022;
+    z-index: 9999;
+    color: #00ffff;
+}
+
+.logo-text {
+    font-size: 3rem;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
+}
+
+.loading-sub {
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: #8ab4ff;
+}
+
+.btn-tron {
+    background-color: transparent;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-tron:hover {
+    background-color: #00ffff;
+    color: #000033;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+}
+
+
+
+
+[cite: 3]document.addEventListener('DOMContentLoaded', function () {
+    // Elementos
+    const backgroundMusic = document.getElementById('background-music');
+    const gameStartSound = document.getElementById('game-start-sound');
+    const crashSound = document.getElementById('crash-sound');
+    const powerupSound = document.getElementById('powerup-sound');
+    const musicBtn = document.getElementById('music-btn');
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const gameContainer = document.getElementById('game-container');
+    const startBtn = document.getElementById('start-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const gameModeSelect = document.getElementById('game-mode');
+    const aiDiffSelect = document.getElementById('ai-difficulty');
+    const matchLengthSelect = document.getElementById('match-length');
+    const bikeStyleSelect = document.getElementById('bike-style');
+    const obstaclesToggle = document.getElementById('obstacles-toggle');
+    const gameFormatSelect = document.getElementById('game-format');
+    const scoreDisplay = document.querySelector('.score-display');
+    const gameOverModal = new bootstrap.Modal(document.getElementById('gameOverModal'));
+    const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+    const recordsModal = new bootstrap.Modal(document.getElementById('recordsModal'));
+    const loadingScreen = document.getElementById('loading-screen');
+    const countdownOverlay = document.getElementById('countdown');
+    const countdownText = document.getElementById('countdown-text');
+    const energy1Bar = document.getElementById('energy1');
+    const energy2Bar = document.getElementById('energy2');
+    const matchInfoEl = document.getElementById('match-info');
+    const pauseMenu = document.getElementById('pause-menu');
+    const replayBtn = document.getElementById('replay-btn');
+    const volMusic = document.getElementById('vol-music');
+    const volFx = document.getElementById('vol-fx');
+
+    // Declaración previa de variables clave para evitar errores de inicialización
+    let goalX = 0;
+
+    function resizeCanvas() {
+        canvas.width = gameContainer.clientWidth;
+        canvas.height = gameContainer.clientHeight;
+        goalX = canvas.width - 34;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Estado global
+    let gameRunning = false;
+    let countdownActive = false;
+    let countdownInterval = null;
+    let animationId;
+    let scores = { player1: 0, player2: 0 };
+    let gameMode = 'single';
+    let matchTarget = 0;
+    let matchOver = false;
+    let aiLevel = 'medium';
+    let musicPlaying = false;
+    let freshRound = true;
+    let speedLevel = 0;
+    let particles = [];
+    let shakeIntensity = 0;
+    let powerUps = [];
+    let paused = false;
+    let gameFormat = 'classic';
+    let bikeStyle = 'cruiser';
+    let obstaclesEnabled = false;
+    let walls = [];
+    let wallPoints = [];
+
+    // Récords por configuración
+    function recordKeyFor(target) {
+        return gameMode + '|' + target + (gameMode === 'single' ? '|' + aiLevel : '|multi');
+    }
+    function getRecord(target) {
+        try { return Number(localStorage.getItem('tronRecord.' + recordKeyFor(target))) || 0; } catch (e) { return 0; }
+    }
+    function saveRecord(target) {
+        if (scores.player1 > getRecord(target)) {
+            try { localStorage.setItem('tronRecord.' + recordKeyFor(target), String(scores.player1)); } catch (e) { }
+        }
+    }
+    let record = getRecord(matchTarget);
+
+    // Ajustes de volumen
+    let settingsVals = { music: 1, fx: 1 };
+    try {
+        const raw = localStorage.getItem('tronSettings');
+        if (raw) settingsVals = Object.assign(settingsVals, JSON.parse(raw));
+    } catch (e) { }
+    function saveSettings() {
+        try { localStorage.setItem('tronSettings', JSON.stringify(settingsVals)); } catch (e) { }
+    }
+    function applyVolumes() {
+        backgroundMusic.volume = settingsVals.music;
+        volMusic.value = Math.round(settingsVals.music * 100);
+        volFx.value = Math.round(settingsVals.fx * 100);
+    }
+
+    // Constantes
+    const POWERUP_RADIUS = 14;
+    const MAX_SPEED_BIAS = 2;
+    const ENERGY_REGEN = 0.55;
+    const DRAFT_SPEED_FACTOR = 0.45;
+    const BOOST_SPEED_FACTOR = 1.6;
+    const CELL = 20;
+    const POWERUP_COUNT = 2;
+    const POWERUP_TTL = 600;
+    const ROUND_WARN_AT = 20000;
+    const MAX_REPLAY_FRAMES = 9000;
+
+    const BIKE_STYLES = {
+        cruiser: { speed: 4, trailWidth: 3, drain: 0.12, label: 'CRUISER' },
+        viper: { speed: 5.5, trailWidth: 2, drain: 0.18, label: 'VIPER' },
+        titan: { speed: 3, trailWidth: 6, drain: 0.07, label: 'TITAN' }
+    };
+
+    const AI_CONFIG = {
+        easy: { lookAhead: 14, randTurn: 0.025 },
+        medium: { lookAhead: 24, randTurn: 0.01 },
+        hard: { lookAhead: 36, randTurn: 0.003 }
+    };
+
+    const POWERUP_DEFS = {
+        shield: { color: '#00ff88', label: 'S' },
+        bonus: { color: '#ffff00', label: '+' },
+        turbo: { color: '#ff9900', label: 'T' },
+        wide: { color: '#00aaff', label: 'D' },
+        invert: { color: '#cc44ff', label: 'I' }
+    };
+
+    // Audios
+    function playSound(el) {
+        if (!el) return;
+        try {
+            el.volume = settingsVals.fx;
+            el.currentTime = 0;
+            el.play();
+        } catch (e) { }
+    }
+
+    function vibrate(ms) {
+        if (navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } }
+    }
+
+    // WebAudio para EQ / alarmas
+    let audioCtx = null;
+    let musicFilter = null;
+    function ensureAudioCtx() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        } catch (e) { return null; }
+    }
+    function setupAudioEQ() {
+        const ctx = ensureAudioCtx();
+        if (!ctx) return false;
+        try {
+            if (!musicFilter) {
+                musicFilter = ctx.createBiquadFilter();
+                musicFilter.type = 'lowpass';
+                musicFilter.frequency.value = 700;
+                const src = ctx.createMediaElementSource(backgroundMusic);
+                src.connect(musicFilter);
+                musicFilter.connect(ctx.destination);
+            } else if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            return true;
+        } catch (e) { return false; }
+    }
+    function rampMusicFilter(freq) {
+        if (audioCtx && musicFilter) {
+            try { musicFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.12); } catch (e) { }
+        }
+    }
+    function playAlarm(freq) {
+        const ctx = ensureAudioCtx();
+        if (!ctx) { playSound(powerupSound); return; }
+        try {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'square';
+            o.frequency.value = freq || 880;
+            g.gain.value = 0.05 * settingsVals.fx;
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(ctx.currentTime + 0.16);
+        } catch (e) { }
+    }
+
+    // --- CLASE BIKE ---
+    class Bike {
+        constructor(x, y, color, controls, isAI = false) {
+            const bb = BIKE_STYLES[bikeStyle] || BIKE_STYLES.cruiser;
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.width = 8;
+            this.height = 8;
+            this.baseSpeed = bb.speed + Math.min(MAX_SPEED_BIAS, speedLevel * 0.3);
+            this.trailWd = bb.trailWidth;
+            this.drain = bb.drain;
+            this.direction = { x: 0, y: 0 };
+            this.trail = [];
+            this.grid = new Map();
+            this.controls = controls;
+            this.isAI = isAI;
+            this.alive = true;
+            this.shield = false;
+            this.boost = 0;
+            this.wide = 0;
+            this.inverted = 0;
+            this.energy = 100;
+            this.boosting = true;
+            this.deathReason = null;
+        }
+
+        addPointToGrid(pt) {
+            const k = Math.floor(pt.x / CELL) + ',' + Math.floor(pt.y / CELL);
+            let arr = this.grid.get(k);
+            if (!arr) { arr = []; this.grid.set(k, arr); }
+            arr.push(pt);
+        }
+        pointsNear(x, y, radius) {
+            const out = [];
+            const cx0 = Math.floor((x - radius) / CELL), cx1 = Math.floor((x + radius) / CELL);
+            const cy0 = Math.floor((y - radius) / CELL), cy1 = Math.floor((y + radius) / CELL);
+            for (let cx = cx0; cx <= cx1; cx++) {
+                for (let cy = cy0; cy <= cy1; cy++) {
+                    const arr = this.grid.get(cx + ',' + cy);
+                    if (arr) for (let i = 0; i < arr.length; i++) out.push(arr[i]);
+                }
+            }
+            return out;
+        }
+        rebuildGrid() {
+            this.grid = new Map();
+            for (let i = 0; i < this.trail.length; i++) this.addPointToGrid(this.trail[i]);
+        }
+
+        hitWall(x, y) {
+            for (const p of wallPoints) {
+                if (this.checkPointCollision(p, x, y)) return true;
+            }
+            return false;
+        }
+
+        update(opponent) {
+            if (!this.alive) return;
+
+            if (this.isAI && gameMode === 'single') {
+                this.manageEnergy();
+                this.smartAIMovement(opponent);
+            }
+
+            if (this.boosting) {
+                this.energy -= this.drain;
+                if (this.energy <= 0) { this.energy = 0; this.die('energy'); return; }
+            } else {
+                this.energy = Math.min(100, this.energy + ENERGY_REGEN);
+            }
+
+            if (this.boost > 0) this.boost--;
+            if (this.wide > 0) this.wide--;
+            if (this.inverted > 0) this.inverted--;
+
+            const spd = this.effectiveSpeed();
+            this.x += this.direction.x * spd;
+            this.y += this.direction.y * spd;
+
+            if (this.boosting) {
+                const pt = { x: this.x, y: this.y };
+                this.trail.push(pt);
+                this.addPointToGrid(pt);
+            }
+
+            this.checkCollisions(opponent);
+        }
+
+        effectiveSpeed() {
+            let s = this.baseSpeed;
+            if (!this.boosting) s *= DRAFT_SPEED_FACTOR;
+            if (this.boost > 0) s *= BOOST_SPEED_FACTOR;
+            return s;
+        }
+
+        manageEnergy() {
+            if (this.energy < 25) this.boosting = false;
+            else if (this.energy > 85) this.boosting = true;
+        }
+
+        smartAIMovement(opponent) {
+            const cfg = AI_CONFIG[aiLevel] || AI_CONFIG.medium;
+            const lookAhead = cfg.lookAhead;
+            const radius = 16;
+            const nx = this.x + this.direction.x * lookAhead;
+            const ny = this.y + this.direction.y * lookAhead;
+            const tailSet = new Set(this.trail.slice(-15));
+
+            let willHit = nx <= 0 || nx >= canvas.width || ny <= 0 || ny >= canvas.height;
+
+            if (!willHit) {
+                const own = this.pointsNear(nx, ny, radius);
+                for (const p of own) {
+                    if (tailSet.has(p)) continue;
+                    if (this.checkPointCollision(p, nx, ny)) { willHit = true; break; }
+                }
+            }
+            if (!willHit) {
+                const opp = opponent.pointsNear(nx, ny, radius);
+                for (const p of opp) {
+                    if (this.checkPointCollision(p, nx, ny)) { willHit = true; break; }
+                }
+            }
+            if (!willHit && this.hitWall(nx, ny)) willHit = true;
+
+            if (willHit || Math.random() < cfg.randTurn) {
+                const choices = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+                const valid = choices.filter(dir => {
+                    if (dir.x === -this.direction.x && dir.y === -this.direction.y) return false;
+                    const tx = this.x + dir.x * (lookAhead + 8);
+                    const ty = this.y + dir.y * (lookAhead + 8);
+                    if (tx <= 0 || tx >= canvas.width || ty <= 0 || ty >= canvas.height) return false;
+                    const own = this.pointsNear(tx, ty, radius);
+                    for (const p of own) {
+                        if (tailSet.has(p)) continue;
+                        if (this.checkPointCollision(p, tx, ty)) return false;
+                    }
+                    const opp = opponent.pointsNear(tx, ty, radius);
+                    for (const p of opp) {
+                        if (this.checkPointCollision(p, tx, ty)) return false;
+                    }
+                    if (this.hitWall(tx, ty)) return false;
+                    return true;
+                });
+                if (valid.length > 0) {
+                    if (gameFormat === 'race') {
+                        const k = valid.findIndex(d => d.x === 1 && d.y === 0);
+                        const pool = k >= 0 ? [valid[k]] : valid;
+                        this.direction = pool[Math.floor(Math.random() * pool.length)];
+                    } else {
+                        this.direction = valid[Math.floor(Math.random() * valid.length)];
+                    }
+                }
+            }
+        }
+
+        checkCollisions(opponent) {
+            const cx = this.x + this.width / 2;
+            const cy = this.y + this.height / 2;
+            let hit = false;
+
+            if (this.x <= 0 || this.x >= canvas.width - this.width ||
+                this.y <= 0 || this.y >= canvas.height - this.height) {
+                hit = true;
+            }
+
+            if (!hit) {
+                const tailSet = new Set(this.trail.slice(-15));
+                for (const p of this.pointsNear(cx, cy, 15)) {
+                    if (tailSet.has(p)) continue;
+                    if (this.checkPointCollision(p, this.x, this.y)) { hit = true; break; }
+                }
+            }
+
+            if (!hit) {
+                for (const p of opponent.pointsNear(cx, cy, 15)) {
+                    if (this.checkPointCollision(p, this.x, this.y)) { hit = true; break; }
+                }
+            }
+
+            if (!hit && this.hitWall(this.x, this.y)) { hit = true; }
+
+            if (hit) {
+                if (this.shield) this.consumeShield(opponent);
+                else this.die();
+            }
+        }
+
+        consumeShield(opponent) {
+            this.shield = false;
+            const cx = this.x + this.width / 2;
+            const cy = this.y + this.height / 2;
+            const clearR = 55;
+            this.trail = this.trail.filter(pt => Math.abs(pt.x - cx) >= clearR || Math.abs(pt.y - cy) >= clearR);
+            opponent.trail = opponent.trail.filter(pt => Math.abs(pt.x - cx) >= clearR || Math.abs(pt.y - cy) >= clearR);
+            this.rebuildGrid();
+            opponent.rebuildGrid();
+            playSound(crashSound);
+        }
+
+        checkPointCollision(point, targetX, targetY) {
+            const margin = 5;
+            return targetX < point.x + margin && targetX + this.width > point.x - margin &&
+                targetY < point.y + margin && targetY + this.height > point.y - margin;
+        }
+
+        die(reason) {
+            if (!this.alive) return;
+            this.alive = false;
+            this.deathReason = reason || 'crash';
+            explode(this.color, this.x + this.width / 2, this.y + this.height / 2);
+            addShake(8);
+            vibrate(120);
+            playSound(crashSound);
+        }
+
+        turn(dx, dy) {
+            if (!this.alive || this.isAI) return;
+            if (dx === 0 && dy === 0) return;
+            if (this.inverted > 0) { dx = -dx; dy = -dy; }
+            if (dx === -this.direction.x && dy === -this.direction.y) return;
+            if (this.direction.x === 0 && this.direction.y === 0) { this.direction = { x: dx, y: dy }; return; }
+            this.direction = { x: dx, y: dy };
+        }
+
+        handleKeyDown(key) {
+            if (!this.alive || this.isAI) return;
+            if (key === this.controls.draft) { this.boosting = false; return; }
+            let dx = 0, dy = 0;
+            if (key === this.controls.up) dy = -1;
+            else if (key === this.controls.down) dy = 1;
+            else if (key === this.controls.left) dx = -1;
+            else if (key === this.controls.right) dx = 1;
+            if (dx !== 0 || dy !== 0) this.turn(dx, dy);
+        }
+
+        handleKeyUp(key) {
+            if (this.isAI) return;
+            if (key === this.controls.draft) this.boosting = true;
+        }
+
+        draw() {
+            const bw = this.wide > 0 ? this.trailWd + 3 : this.trailWd;
+
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = bw;
+            ctx.beginPath();
+            if (this.trail.length > 0) {
+                ctx.moveTo(this.trail[0].x + 4, this.trail[0].y + 4);
+                for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x + 4, this.trail[i].y + 4);
+            }
+            ctx.stroke();
+
+            if (this.trail.length > 0) {
+                const start = Math.max(0, this.trail.length - 60);
+                ctx.save();
+                ctx.strokeStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                ctx.lineWidth = bw + 1;
+                ctx.globalAlpha = 0.9;
+                ctx.beginPath();
+                ctx.moveTo(this.trail[start].x + 4, this.trail[start].y + 4);
+                for (let i = start + 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x + 4, this.trail[i].y + 4);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.restore();
+
+            const rings = [];
+            if (this.shield) rings.push({ color: '#00ff88', r: POWERUP_RADIUS + 4 });
+            if (this.boost > 0) rings.push({ color: '#ff9900', r: POWERUP_RADIUS + 2 });
+            if (this.inverted > 0) rings.push({ color: '#cc44ff', r: POWERUP_RADIUS + 6 });
+            for (const ring of rings) {
+                ctx.strokeStyle = ring.color;
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.7 + 0.3 * Math.sin(Date.now() / 100);
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + this.height / 2, ring.r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+    }
+
+    // --- MUROS ---
+    function generateWalls() {
+        walls = [];
+        wallPoints = [];
+        if (!obstaclesEnabled || !canvas.width) return;
+        const margin = 70;
+        let attempts = 0;
+        while (walls.length < 3 && attempts < 40) {
+            attempts++;
+            const horizontal = Math.random() < 0.5;
+            const len = 90 + Math.random() * 110;
+            const x1 = margin + Math.random() * (canvas.width - margin * 2 - len);
+            const y1 = margin + Math.random() * (canvas.height - margin * 2 - (horizontal ? 0 : len));
+            const x2 = horizontal ? x1 + len : x1;
+            const y2 = horizontal ? y1 : y1 + len;
+            if (x2 > canvas.width - margin || y2 > canvas.height - margin) continue;
+            walls.push({ x1, y1, x2, y2 });
+        }
+        for (const w of walls) {
+            const dist = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+            const steps = Math.max(1, Math.ceil(dist / 6));
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                wallPoints.push({ x: w.x1 + (w.x2 - w.x1) * t, y: w.y1 + (w.y2 - w.y1) * t });
+            }
+        }
+    }
+
+    function drawWalls() {
+        for (const w of walls) {
+            ctx.save();
+            ctx.strokeStyle = '#4d6bff';
+            ctx.lineWidth = 10;
+            ctx.shadowColor = '#8ab4ff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(w.x1, w.y1);
+            ctx.lineTo(w.x2, w.y2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // --- POWER-UPS ---
+    function spawnPowerUp(ttl) {
+        const types = Object.keys(POWERUP_DEFS);
+        let x = 0, y = 0;
+        for (let attempt = 0; attempt < 25; attempt++) {
+            const pad = 60;
+            x = pad + Math.random() * (canvas.width - pad * 2);
+            y = pad + Math.random() * (canvas.height - pad * 2);
+            const nearTrail = [player1, player2].some(b => b && b.trail.some(pt => Math.hypot(pt.x - x, pt.y - y) < 45));
+            const nearWall = wallPoints.some(pt => Math.hypot(pt.x - x, pt.y - y) < 45);
+            if (!nearTrail && !nearWall) break;
+        }
+        powerUps.push({ type: types[Math.floor(Math.random() * types.length)], x, y, ttl: ttl || POWERUP_TTL, warned: false });
+    }
+
+    function ensurePowerUps() {
+        while (powerUps.length < POWERUP_COUNT) spawnPowerUp();
+    }
+
+    function updatePowerUps() {
+        for (let i = powerUps.length - 1; i >= 0; i--) {
+            const pu = powerUps[i];
+            pu.ttl--;
+            if (pu.ttl <= 0) { powerUps.splice(i, 1); continue; }
+            if (pu.ttl < 180 && !pu.warned) {
+                pu.warned = true;
+                playAlarm(880);
+            }
+            if (pu.ttl === 60) playAlarm(1180);
+        }
+        ensurePowerUps();
+    }
+
+    function drawPowerUps() {
+        for (const pu of powerUps) {
+            const def = POWERUP_DEFS[pu.type] || POWERUP_DEFS.bonus;
+            const nearExpire = pu.ttl < 180;
+            const alpha = nearExpire
+                ? 0.3 + 0.5 * Math.abs(Math.sin(Date.now() / 70))
+                : 0.6 + 0.4 * Math.sin(Date.now() / 150);
+            ctx.save();
+            ctx.shadowColor = def.color;
+            ctx.shadowBlur = 18;
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            ctx.arc(pu.x, pu.y, POWERUP_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = def.color;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000033';
+            ctx.font = 'bold 14px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(nearExpire ? '!' : def.label, pu.x, pu.y + 1);
+            ctx.restore();
+        }
+    }
+
+    function checkPowerUps() {
+        for (let i = powerUps.length - 1; i >= 0; i--) {
+            const pu = powerUps[i];
+            for (const p of [player1, player2]) {
+                if (!p || !p.alive) continue;
+                const reached = pu.x > p.x - POWERUP_RADIUS && pu.x < p.x + p.width + POWERUP_RADIUS &&
+                    pu.y > p.y - POWERUP_RADIUS && pu.y < p.y + p.height + POWERUP_RADIUS;
+                if (reached) {
+                    switch (pu.type) {
+                        case 'shield': p.shield = true; break;
+                        case 'bonus':
+                            if (p === player1) scores.player1++;
+                            else scores.player2++;
+                            updateScoreDisplay();
+                            break;
+                        case 'turbo': p.boost = 240; break;
+                        case 'wide': p.wide = 360; break;
+                        case 'invert': {
+                            const other = p === player1 ? player2 : player1;
+                            if (!other.isAI) other.inverted = 300;
+                            break;
+                        }
+                    }
+                    playSound(powerupSound);
+                    vibrate(50);
+                    powerUps.splice(i, 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    // --- EFECTOS ---
+    function explode(color, x, y) {
+        for (let i = 0; i < 42; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = 0.8 + Math.random() * 3.4;
+            particles.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 1, color });
+        }
+    }
+
+    function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vx *= 0.96;
+            p.vy *= 0.96;
+            p.life -= 0.028;
+            if (p.life <= 0) { particles.splice(i, 1); continue; }
+            ctx.save();
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 8;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+            ctx.restore();
+        }
+    }
+
+    function addShake(v) { shakeIntensity = Math.min(16, shakeIntensity + v); }
+
+    function drawGrid() {
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.07)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 20; x < canvas.width; x += 20) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+        for (let y = 20; y < canvas.height; y += 20) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+        ctx.stroke();
+    }
+
+    function drawGoalLine() {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,255,255,0.7)';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.moveTo(goalX, 0);
+        ctx.lineTo(goalX, canvas.height);
+        ctx.stroke();
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 12;
+        ctx.fillText('META', goalX, 24);
+        ctx.restore();
+    }
+
+    // --- GAME ---
+    let player1, player2;
+    let lastReplay = null;
+    let replayActive = false;
+    let replayFrame = 0;
+    let replayAnimId = null;
+    let roundStartTime = 0;
+    let roundWarned = false;
+
+    function createBikes() {
+        const p1Ctrls = { up: 'w', down: 's', left: 'a', right: 'd', draft: 'shift' };
+        const p2Ctrls = { up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright', draft: 'l' };
+        if (gameFormat === 'race') {
+            player1 = new Bike(60, canvas.height * 0.38, '#00ffff', p1Ctrls);
+            player2 = new Bike(60, canvas.height * 0.62, '#ff00ff', p2Ctrls, gameMode === 'single');
+            player1.direction = { x: 1, y: 0 };
+            player2.direction = { x: 1, y: 0 };
+        } else {
+            player1 = new Bike(100, canvas.height / 2, '#00ffff', p1Ctrls);
+            player2 = new Bike(canvas.width - 100, canvas.height / 2, '#ff00ff', p2Ctrls, gameMode === 'single');
+            player1.direction = { x: 1, y: 0 };
+            player2.direction = { x: -1, y: 0 };
+        }
+        generateWalls();
+        freshRound = true;
+        particles = [];
+        shakeIntensity = 0;
+        powerUps = [];
+        lastReplay = null;
+        roundStartTime = 0;
+        roundWarned = false;
+    }
+
+    function applyHandicap() {
+        if (scores.player1 !== scores.player2) {
+            if (scores.player1 < scores.player2 && player1) player1.shield = true;
+            else if (scores.player2 < scores.player1 && player2) player2.shield = true;
+        }
+    }
+
+    function updateScoreDisplay() {
+        scoreDisplay.querySelector('.player-1').textContent = `Jugador 1: ${scores.player1}`;
+        scoreDisplay.querySelector('.player-2').textContent = `Jugador 2: ${scores.player2}`;
+    }
+
+    function updateMatchInfo() {
+        const mode = gameMode === 'single' ? 'VS CPU' : '2 JUGADORES';
+        const target = matchTarget > 0 ? ` · PRIMERO A ${matchTarget}` : 'MODO INFINITO';
+        const fmt = gameFormat === 'race' ? ' · RAZA' : '';
+        const bike = ` · MOTO ${BIKE_STYLES[bikeStyle].label}`;
+        matchInfoEl.textContent = `MEJOR MARCA: ${record} · ${mode}${target}${fmt}${bike}`;
+    }
+
+    function updateEnergyHUD() {
+        if (!player1 || !player2) return;
+        energy1Bar.style.width = player1.energy + '%';
+        energy1Bar.style.background = player1.energy < 25 ? '#ff0033' : (player1.energy < 55 ? '#ffaa00' : '#00ff88');
+        energy2Bar.style.width = player2.energy + '%';
+        energy2Bar.style.background = player2.energy < 25 ? '#ff0033' : (player2.energy < 55 ? '#ffaa00' : '#ff00ff');
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(-16, -16, canvas.width + 32, canvas.height + 32);
+
+        const sx = shakeIntensity > 0.2 ? (Math.random() * 2 - 1) * shakeIntensity : 0;
+        const sy = shakeIntensity > 0.2 ? (Math.random() * 2 - 1) * shakeIntensity : 0;
+        ctx.save();
+        ctx.translate(sx, sy);
+
+        drawGrid();
+        drawWalls();
+        if (gameFormat === 'race') drawGoalLine();
+        player1.update(player2);
+        player2.update(player1);
+        if (frameLog) {
+            frameLog.push({ x1: player1.x, y1: player1.y, x2: player2.x, y2: player2.y });
+            if (frameLog.length > MAX_REPLAY_FRAMES) frameLog.shift();
+        }
+        updateParticles();
+        updatePowerUps();
+        drawPowerUps();
+        checkPowerUps();
+        player1.draw();
+        player2.draw();
+
+        ctx.restore();
+        shakeIntensity *= 0.88;
+
+        updateEnergyHUD();
+
+        if (roundStartTime) {
+            const elapsed = Date.now() - roundStartTime;
+            if (elapsed >= ROUND_WARN_AT && !roundWarned) {
+                roundWarned = true;
+                playAlarm(880);
+                playAlarm(700);
+                vibrate(250);
+            }
+            if (roundWarned && elapsed < ROUND_WARN_AT + 3000) {
+                ctx.save();
+                ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() / 90);
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 24px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('¡CUIDADO!', canvas.width / 2, 30);
+                ctx.restore();
+            }
+        }
+
+        if (gameFormat === 'race') {
+            if (player1.alive && player1.x + player1.width >= goalX) { endGame('player1', 'goal'); return; }
+            if (player2.alive && player2.x + player2.width >= goalX) { endGame('player2', 'goal'); return; }
+        }
+
+        if (!player1.alive || !player2.alive) {
+            endGame(null);
+            return;
+        }
+        animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame(winnerOverride, reason) {
+        gameRunning = false;
+        cancelAnimationFrame(animationId);
+
+        let msg = '';
+        if (winnerOverride === 'player1') {
+            scores.player1++;
+            msg = reason === 'goal' ? '¡JUGADOR 1 LLEGA A LA META!' : 'JUGADOR 1 GANA';
+            vibrate(200);
+        } else if (winnerOverride === 'player2') {
+            scores.player2++;
+            msg = reason === 'goal' ? '¡JUGADOR 2 LLEGA A LA META!' : 'JUGADOR 2 GANA';
+            vibrate(200);
+        } else if (!player1.alive && !player2.alive) {
+            msg = '¡COLISIÓN SIMULTÁNEA!';
+        } else if (!player1.alive) {
+            scores.player2++;
+            msg = player1.deathReason === 'energy' ? '¡JUGADOR 1 SIN ENERGÍA!' : '¡JUGADOR 1 HA CAÍDO!';
+            msg += '<br>GANADOR: JUGADOR 2';
+        } else {
+            scores.player1++;
+            msg = player2.deathReason === 'energy' ? '¡JUGADOR 2 SIN ENERGÍA!' : '¡JUGADOR 2 HA CAÍDO!';
+            msg += '<br>GANADOR: JUGADOR 1';
+        }
+
+        matchOver = matchTarget > 0 && (scores.player1 >= matchTarget || scores.player2 >= matchTarget);
+        if (matchOver) {
+            const champ = scores.player1 >= matchTarget ? 'JUGADOR 1' : 'JUGADOR 2';
+            msg += `<br><span class="text-warning fs-2">🏆 ${champ} CAMPEÓN</span>`;
+            vibrate(300);
+        }
+        if (!matchOver && (player1.alive || player2.alive)) speedLevel++;
+
+        document.getElementById('gameOverBody').innerHTML = msg;
+        updateScoreDisplay();
+
+        saveRecord(matchTarget);
+        record = getRecord(matchTarget);
+        updateMatchInfo();
+
+        if (frameLog && frameLog.length > 4) {
+            lastReplay = frameLog.slice();
+            replayBtn.style.display = 'inline-block';
+        } else {
+            replayBtn.style.display = 'none';
+        }
+
+        startBtn.textContent = matchOver ? 'Nueva Partida' : 'Nueva Ronda';
+        gameOverModal.show();
+    }
+
+    let frameLog = null;
+
+    // --- REPLAY ---
+    function startReplay() {
+        if (!lastReplay || lastReplay.length < 4) return;
+        gameOverModal.hide();
+        replayActive = true;
+        replayFrame = 0;
+        cancelAnimationFrame(replayAnimId);
+        replayLoop();
+    }
+    function replayLoop() {
+        if (!replayActive) return;
+        if (replayFrame >= lastReplay.length) { replayActive = false; return; }
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(-16, -16, canvas.width + 32, canvas.height + 32);
+        drawGrid();
+        drawWalls();
+        if (gameFormat === 'race') drawGoalLine();
+        drawReplayTrail(0, replayFrame, '#00ffff');
+        drawReplayTrail(1, replayFrame, '#ff00ff');
+        replayFrame += 3;
+        replayAnimId = requestAnimationFrame(replayLoop);
+    }
+    function drawReplayTrail(idx, upTo, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i <= upTo; i++) {
+            const f = lastReplay[i];
+            if (!f) break;
+            const x = idx === 0 ? f.x1 : f.x2;
+            const y = idx === 0 ? f.y1 : f.y2;
+            if (!started) { ctx.moveTo(x + 4, y + 4); started = true; }
+            else { ctx.lineTo(x + 4, y + 4); }
+            if (i >= upTo) break;
+        }
+        ctx.stroke();
+        const lf = lastReplay[upTo];
+        if (lf) {
+            const hx = idx === 0 ? lf.x1 : lf.x2;
+            const hy = idx === 0 ? lf.y1 : lf.y2;
+            ctx.fillStyle = color;
+            ctx.fillRect(hx, hy, 8, 8);
+        }
+    }
+    function cancelReplay() {
+        if (!replayActive) return;
+        replayActive = false;
+        cancelAnimationFrame(replayAnimId);
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawWalls();
+        if (gameFormat === 'race') drawGoalLine();
+    }
+
+    // --- CUENTA ATRÁS ---
+    function setCountdown(txt, visible) {
+        if (visible && txt !== null) countdownText.textContent = txt;
+        countdownOverlay.style.display = visible ? 'flex' : 'none';
+    }
+
+    function startCountdown() {
+        countdownActive = true;
+        startBtn.textContent = 'Preparando…';
+        playSound(gameStartSound);
+        rampMusicFilter(3500);
+
+        let n = 3;
+        setCountdown(n, true);
+        clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => {
+            n--;
+            if (n <= 0) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+                setCountdown('¡YA!', true);
+                setTimeout(() => setCountdown(null, false), 450);
+                countdownActive = false;
+                rampMusicFilter(700);
+                gameRunning = true;
+                startBtn.textContent = 'Pausar';
+                ensurePowerUps();
+                frameLog = [];
+                roundStartTime = Date.now();
+                roundWarned = false;
+                gameLoop();
+            } else {
+                setCountdown(n, true);
+            }
+        }, 800);
+    }
+
+    // --- PAUSA ---
+    function pauseGame() {
+        if (replayActive) return;
+        gameRunning = false;
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            countdownActive = false;
+        }
+        setCountdown(null, false);
+        cancelAnimationFrame(animationId);
+        paused = true;
+        pauseMenu.style.display = 'flex';
+        startBtn.textContent = 'Continuar';
+    }
+    function hidePauseMenu() {
+        paused = false;
+        pauseMenu.style.display = 'none';
+    }
+    function resumeGame() {
+        hidePauseMenu();
+        if (!player1 || !player1.alive || !player2.alive) createBikes();
+        if (freshRound) {
+            freshRound = false;
+            startCountdown();
+        } else if (player1.alive && player2.alive) {
+            gameRunning = true;
+            startBtn.textContent = 'Pausar';
+            gameLoop();
+        } else {
+            createBikes();
+            freshRound = false;
+            startCountdown();
+        }
+    }
+
+    // --- CONTROLES DE BOTONES ---
+    startBtn.addEventListener('click', () => {
+        if (replayActive) { cancelReplay(); hidePauseMenu(); return; }
+        if (gameRunning || countdownActive) { pauseGame(); return; }
+        if (paused) { resumeGame(); return; }
+        if (matchOver) {
+            matchOver = false;
+            speedLevel = 0;
+            scores = { player1: 0, player2: 0 };
+            updateScoreDisplay();
+            createBikes();
+            startCountdown();
+            return;
+        }
+        if (!player1 || !player1.alive || !player2.alive) createBikes();
+        applyHandicap();
+        if (freshRound) {
+            freshRound = false;
+            startCountdown();
+        } else {
+            gameRunning = true;
+            startBtn.textContent = 'Pausar';
+            gameLoop();
+        }
+    });
+
+    document.getElementById('restart-btn').addEventListener('click', () => {
+        gameOverModal.hide();
+        startBtn.click();
+    });
+
+    replayBtn.addEventListener('click', () => {
+        startReplay();
+    });
+
+    resetBtn.addEventListener('click', () => {
+        gameRunning = false;
+        countdownActive = false;
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        setCountdown(null, false);
+        cancelAnimationFrame(animationId);
+        cancelReplay();
+        hidePauseMenu();
+        powerUps = [];
+        scores = { player1: 0, player2: 0 };
+        matchOver = false;
+        speedLevel = 0;
+        frameLog = null;
+        updateScoreDisplay();
+        createBikes();
+        updateEnergyHUD();
+        record = getRecord(matchTarget);
+        updateMatchInfo();
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawWalls();
+        if (gameFormat === 'race') drawGoalLine();
+        startBtn.textContent = 'Iniciar Juego';
+    });
+
+    document.getElementById('resume-btn').addEventListener('click', () => startBtn.click());
+    document.getElementById('pause-restart-btn').addEventListener('click', () => resetBtn.click());
+    document.getElementById('pause-controls-btn').addEventListener('click', () => {
+        const h = document.getElementById('pause-hint');
+        h.style.display = h.style.display === 'none' ? 'block' : 'none';
+    });
+
+    volMusic.addEventListener('input', () => {
+        settingsVals.music = Number(volMusic.value) / 100;
+        backgroundMusic.volume = settingsVals.music;
+        saveSettings();
+    });
+    volFx.addEventListener('input', () => {
+        settingsVals.fx = Number(volFx.value) / 100;
+        saveSettings();
+    });
+    document.getElementById('volume-reset-btn').addEventListener('click', () => {
+        settingsVals.music = 1;
+        settingsVals.fx = 1;
+        applyVolumes();
+        saveSettings();
+    });
+    document.getElementById('records-btn').addEventListener('click', () => {
+        settingsModal.hide();
+        populateRecords();
+        recordsModal.show();
+    });
+
+    document.getElementById('settings-btn').addEventListener('click', () => settingsModal.show());
+
+    function populateRecords() {
+        const body = document.getElementById('records-body');
+        const fmts = [
+            { label: 'INFINITO', value: 0 },
+            { label: 'RÁPIDA (3)', value: 3 },
+            { label: 'TORNEO (5)', value: 5 }
+        ];
+        let html = '';
+        for (const f of fmts) {
+            html += `<tr><td class="text-start small">${f.label}</td>`;
+            for (const [mode, ai] of [['single', 'easy'], ['single', 'medium'], ['single', 'hard'], ['multi', 'multi']]) {
+                const k = mode + '|' + f.value + (mode === 'single' ? '|' + ai : '|multi');
+                let v = 0;
+                try { v = Number(localStorage.getItem('tronRecord.' + k)) || 0; } catch (e) { }
+                html += `<td class="small">${v}</td>`;
+            }
+            html += '</tr>';
+        }
+        body.innerHTML = html;
+    }
+
+    function onConfigChange() {
+        resetBtn.click();
+    }
+    gameModeSelect.addEventListener('change', () => {
+        const newMode = gameModeSelect.value;
+        if (newMode === gameMode) return;
+        gameMode = newMode;
+        onConfigChange();
+    });
+    aiDiffSelect.addEventListener('change', () => {
+        aiLevel = aiDiffSelect.value;
+        onConfigChange();
+    });
+    matchLengthSelect.addEventListener('change', () => {
+        const v = Number(matchLengthSelect.value);
+        if (v === matchTarget) return;
+        matchTarget = v;
+        onConfigChange();
+    });
+    bikeStyleSelect.addEventListener('change', () => {
+        bikeStyle = bikeStyleSelect.value;
+        onConfigChange();
+    });
+    obstaclesToggle.addEventListener('change', () => {
+        obstaclesEnabled = obstaclesToggle.value === 'on';
+        onConfigChange();
+    });
+    gameFormatSelect.addEventListener('change', () => {
+        gameFormat = gameFormatSelect.value;
+        onConfigChange();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === 'escape') {
+            if (replayActive) { cancelReplay(); return; }
+            if (paused || gameRunning || countdownActive) { startBtn.click(); return; }
+            return;
+        }
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', 'l'].includes(key)) e.preventDefault();
+        if (player1) player1.handleKeyDown(key);
+        if (player2) player2.handleKeyDown(key);
+    });
+
+    document.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        if (player1) player1.handleKeyUp(key);
+        if (player2) player2.handleKeyUp(key);
+    });
+
+    // Controles táctiles
+    let touch = null;
+    canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) {
+            const t = e.touches[0];
+            touch = { x: t.clientX, y: t.clientY, lx: t.clientX, ly: t.clientY };
+        }
+        e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => {
+        if (touch && e.touches.length > 0) {
+            touch.lx = e.touches[0].clientX;
+            touch.ly = e.touches[0].clientY;
+        }
+        e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchend', () => {
+        if (!touch) return;
+        const start = touch;
+        touch = null;
+        const dx = start.lx - start.x;
+        const dy = start.ly - start.y;
+        if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+        let dir;
+        if (Math.abs(dx) > Math.abs(dy)) dir = { x: Math.sign(dx), y: 0 };
+        else dir = { x: 0, y: Math.sign(dy) };
+        const rect = canvas.getBoundingClientRect();
+        const target = gameMode === 'multi'
+            ? (start.x < rect.left + canvas.width / 2 ? player1 : player2)
+            : player1;
+        if (target) target.turn(dir.x, dir.y);
+    });
+
+    // Carga inicial limpia (sin tutorial)
+    setTimeout(() => {
+        loadingScreen.style.display = 'none';
+        applyVolumes();
+        createBikes();
+        updateEnergyHUD();
+        record = getRecord(matchTarget);
+        updateMatchInfo();
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        drawGrid();
+        drawWalls();
+        if (gameFormat === 'race') drawGoalLine();
+    }, 1500);
+
+    // Música
+    musicBtn.addEventListener('click', () => {
+        musicPlaying = !musicPlaying;
+        if (musicPlaying) {
+            setupAudioEQ();
+            playSound(backgroundMusic);
+            rampMusicFilter(700);
+        } else {
+            try { backgroundMusic.pause(); } catch (e) { }
+        }
+        musicBtn.innerHTML = musicPlaying ? '♫' : '🔇';
+    });
+});
